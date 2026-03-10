@@ -1,39 +1,81 @@
-# 404 NOT_FOUND Hatası (Vercel benzeri dağıtım ortamları)
+# 404: NOT_FOUND (Vercel) — Hızlı Çözüm Rehberi
 
-Kullanıcıdan gelen örnek hata:
+Aldığınız hata:
 
-```
+```txt
 404: NOT_FOUND
 Code: NOT_FOUND
-ID: fra1::tmddz-1773167550046-876105eaf856
+ID: fra1::bf8ns-1773168063448-2511ddab7d24
 ```
 
-Bu format genellikle isteğin bir route'a eşleşmediğini veya ilgili deployment'ın silindiğini/taşındığını gösterir.
+Bu hata çoğunlukla **domain bir deployment’a bağlı değilken**, **yanlış path çağrılırken** veya **SPA rewrite eksikken** oluşur.
 
-## Olası sebepler
+---
 
-1. **Yanlış URL / domain**
-   - Eski preview deployment linki açılıyor olabilir.
-2. **Deployment kaldırılmış olabilir**
-   - Preview üretimi silinmiş veya retention süresi dolmuş olabilir.
-3. **Prod alias yanlış deployment'a işaret ediyor olabilir**
-   - Domain doğru ama aktif deployment yanlış.
-4. **Uygulamada route yok**
-   - Örneğin `/api/foo` çağrılıyor ama böyle bir endpoint yok.
-5. **Framework rewrite/redirect kuralı eksik**
-   - SPA uygulamalarında direct route erişimlerinde 404 dönebilir.
+## 1) 5 dakikalık hızlı teşhis
 
-## Hızlı kontrol listesi
+1. **Doğru URL mi?**
+   - Eski preview linki yerine production domain’i açın.
+2. **Deployment var mı?**
+   - Dashboard’da son deploy `Ready` mı kontrol edin.
+3. **Domain doğru projeye bağlı mı?**
+   - Domain/alias mapping’i kontrol edin.
+4. **Route gerçekten mevcut mu?**
+   - Çağırdığınız path’in uygulamada karşılığı var mı doğrulayın.
+5. **SPA ise rewrite var mı?**
+   - `example.com/ayarlar` gibi deep-link’lerde rewrite yoksa 404 alırsınız.
 
-- Deployment platformunda ilgili proje içinde son başarılı build var mı kontrol et.
-- Domain/alias eşleşmesini kontrol et (`Production` -> doğru deployment).
-- Preview URL yerine production URL kullan.
-- API route dosyalarının doğru path'te olduğunu doğrula.
-- SPA ise tüm route'ları `index.html`'e rewrite eden kuralı ekle.
+---
 
-## Önerilen aksiyon
+## 2) Hemen uygulanabilir düzeltmeler
 
-1. Son başarılı deployment'ı yeniden promote et.
-2. Domain'i doğru deployment'a yeniden bağla.
-3. Route/rewrite konfigürasyonunu gözden geçirip tekrar deploy et.
-4. Hata devam ediyorsa platform log'larında bu `ID` ile arama yap.
+### A) Production deployment’ı yeniden bağla/promote et
+
+- Vercel panelinde son başarılı deploy’u Production’a promote edin.
+- Domain’in bu deploy’a bağlı olduğundan emin olun.
+
+### B) Domain kontrolü
+
+- Project → Settings → Domains altında domain’in **Verified** ve doğru projeye bağlı olduğundan emin olun.
+- Yanlış bağlıysa kaldırıp yeniden ekleyin.
+
+### C) SPA rewrite ekle (React/Vite gibi)
+
+`vercel.json` yoksa ekleyin, varsa aşağıdaki kuralı doğrulayın:
+
+```json
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
+
+> Not: Next.js App Router kullanıyorsanız genelde bu rewrite’a ihtiyaç yoktur; path’ler framework içinde çözülür.
+
+### D) API route doğrulaması
+
+- Çağırdığınız endpoint ile dosya/route path birebir aynı olmalı.
+- Örn. `/api/health` çağrılıyorsa route gerçekten deploy edilen build içinde olmalı.
+
+---
+
+## 3) Log ve doğrulama adımları
+
+1. İlgili isteği tekrar atın.
+2. Logs/Functions/Edge loglarında bu ID’yi arayın:
+   - `fra1::bf8ns-1773168063448-2511ddab7d24`
+3. Aşağıdaki gibi basit kontrol yapın:
+
+```bash
+curl -i https://<domaininiz>/
+curl -i https://<domaininiz>/<404-alan-path>
+```
+
+Beklenen:
+- `/` için 200/3xx
+- Uygun route için 200/3xx (veya API ise beklenen status)
+
+---
+
+## 4) En olası kök neden (bu hata formatına göre)
+
+Bu tip `404: NOT_FOUND` + bölge/ID formatı çoğunlukla platform seviyesinde route/deployment eşleşme problemidir; yani uygulama kodundan önce **deployment alias/domain eşleşmesini** düzeltmek genelde sorunu çözer.
