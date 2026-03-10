@@ -1,99 +1,196 @@
-const LEVELS = [
-  { name: "Messy Living Room", image: "https://images.unsplash.com/photo-1484101403633-562f891dc89a?auto=format&fit=crop&w=1800&q=80", baseTime: 95, objects: [
-    { name: "Lamp", x: 18, y: 27, radius: 4.8 }, { name: "Plant", x: 80, y: 42, radius: 5 }, { name: "Pillow", x: 36, y: 61, radius: 5.2 }, { name: "Book", x: 57, y: 70, radius: 5 }, { name: "Mug", x: 49, y: 63, radius: 4.8 }, { name: "Remote", x: 44, y: 68, radius: 4.5 }
-  ] },
-  { name: "Office Desk", image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1800&q=80", baseTime: 85, objects: [
-    { name: "Keyboard", x: 53, y: 75, radius: 5.5 }, { name: "Phone", x: 32, y: 67, radius: 5 }, { name: "Notebook", x: 66, y: 62, radius: 5 }, { name: "Coffee Cup", x: 76, y: 48, radius: 5 }, { name: "Pen", x: 61, y: 70, radius: 4.6 }, { name: "Headphones", x: 22, y: 58, radius: 5.2 }
-  ] },
-  { name: "Street Market", image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1800&q=80", baseTime: 80, objects: [
-    { name: "Hat", x: 29, y: 28, radius: 5 }, { name: "Backpack", x: 70, y: 63, radius: 5.2 }, { name: "Crate", x: 57, y: 73, radius: 5.2 }, { name: "Scooter", x: 19, y: 77, radius: 5.2 }, { name: "Sign", x: 76, y: 21, radius: 5 }, { name: "Bottle", x: 47, y: 65, radius: 4.5 }
-  ] },
-  { name: "Playground", image: "https://images.unsplash.com/photo-1520694478166-daaaaec95b69?auto=format&fit=crop&w=1800&q=80", baseTime: 75, objects: [
-    { name: "Slide", x: 38, y: 49, radius: 5.5 }, { name: "Ball", x: 63, y: 75, radius: 4.8 }, { name: "Bench", x: 70, y: 62, radius: 5.2 }, { name: "Swing", x: 20, y: 54, radius: 5.2 }, { name: "Bottle", x: 54, y: 68, radius: 4.5 }, { name: "Backpack", x: 45, y: 70, radius: 5 }
-  ] },
-  { name: "Library Study Room", image: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1800&q=80", baseTime: 70, objects: [
-    { name: "Glasses", x: 43, y: 66, radius: 4.8 }, { name: "Clock", x: 74, y: 16, radius: 5 }, { name: "Laptop", x: 56, y: 72, radius: 5.2 }, { name: "Book Stack", x: 30, y: 63, radius: 5.2 }, { name: "Desk Lamp", x: 68, y: 48, radius: 5 }, { name: "Notebook", x: 50, y: 68, radius: 4.8 }
-  ] }
+const roomPools = [
+  {
+    name: "Ev",
+    items: ["Kupa", "Anahtar", "Kumanda", "Kitap", "Yastık", "Lamba", "Çorap", "Telefon", "Kulaklık", "Saat"],
+  },
+  {
+    name: "Okul",
+    items: ["Silgi", "Kalem", "Cetvel", "Defter", "Makas", "Boya", "Sırt Çantası", "Dosya", "Küre", "Projeksiyon Kumandası"],
+  },
+  {
+    name: "İşyeri",
+    items: ["Zımba", "USB", "Mühür", "Kartvizit", "Ajanda", "Sunum Tıklayıcı", "Not Kağıdı", "Sözleşme", "Toplantı Rozeti", "Masa Kartı"],
+  },
+  {
+    name: "Laboratuvar",
+    items: ["Mikroskop", "Pipet", "Petri Kabı", "Koruyucu Gözlük", "Deney Tüpü", "Eldiven", "pH Kağıdı", "Termometre", "Numune Şişesi", "Kronometre"],
+  },
+  {
+    name: "Spor Salonu",
+    items: ["Dambıl", "Mat", "Su Şişesi", "Havlu", "Atlama İpi", "Eldiven", "Protein Shaker", "Kronometre", "Spor Çantası", "Direnç Bandı"],
+  },
+  {
+    name: "Alışveriş Merkezi",
+    items: ["Hediye Kartı", "Mağaza Poşeti", "Fiş", "Güneş Gözlüğü", "Parfüm", "Ayakkabı Kutusu", "Bilet", "Yönlendirme Broşürü", "Cüzdan", "Şapka"],
+  },
+  {
+    name: "Market",
+    items: ["Süt", "Ekmek", "Makarna", "Elma", "Peynir", "Yoğurt", "Deterjan", "Pil", "Meyve Suyu", "Kahve"],
+  },
 ];
 
-const state = { levelIndex: 0, hintsLeft: 3, score: 0, timeLeft: 0, timerId: null, currentTargets: [], zoom: 1, levelLocked: false };
-const $ = (id) => document.getElementById(id);
-const sceneImage = $('sceneImage'), objectList = $('objectList'), timerValue = $('timerValue'), scoreValue = $('scoreValue'), hintValue = $('hintValue'), levelValue = $('levelValue'), feedback = $('feedback'), hintBtn = $('hintBtn'), nextBtn = $('nextBtn'), stage = $('stage'), stageScroll = $('stageScroll'), zoomRange = $('zoomRange'), overlay = $('overlay'), overlayTitle = $('overlayTitle'), overlayText = $('overlayText');
+const symbols = ["📦", "🧩", "🛒", "📚", "🧪", "🏷️", "🧼", "🎒", "🗂️", "🎯", "🔍", "🧠", "🧴", "📌", "🧤", "🧭"];
 
-const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
-const generateTargets = (level) => shuffle(level.objects).slice(0, Math.min(5 + state.levelIndex, level.objects.length)).map(o => ({ ...o, found: false }));
-const allFound = () => state.currentTargets.every(t => t.found);
+const state = {
+  level: 1,
+  maxLevel: 20,
+  playing: false,
+  currentRoom: null,
+  targets: [],
+  found: new Set(),
+  cells: [],
+  timeLeft: 0,
+  timer: null,
+};
 
-function renderUI() {
-  levelValue.textContent = `${state.levelIndex + 1} / ${LEVELS.length}`;
-  timerValue.textContent = `${Math.max(0, state.timeLeft)}s`;
-  scoreValue.textContent = state.score;
-  hintValue.textContent = state.hintsLeft;
-  objectList.innerHTML = '';
-  state.currentTargets.forEach(target => {
-    const li = document.createElement('li');
-    li.className = `object-item ${target.found ? 'found' : ''}`;
-    li.innerHTML = `<span>${target.name}</span><span>${target.found ? '✓' : ''}</span>`;
-    objectList.appendChild(li);
+const roomLabel = document.getElementById("roomLabel");
+const levelLabel = document.getElementById("levelLabel");
+const timerLabel = document.getElementById("timerLabel");
+const targetsEl = document.getElementById("targets");
+const grid = document.getElementById("grid");
+const message = document.getElementById("message");
+
+document.getElementById("startBtn").addEventListener("click", () => {
+  if (!state.playing) startLevel(state.level);
+});
+
+document.getElementById("restartBtn").addEventListener("click", resetGame);
+
+function resetGame() {
+  clearInterval(state.timer);
+  state.level = 1;
+  state.playing = false;
+  state.found.clear();
+  state.targets = [];
+  state.cells = [];
+  message.textContent = "Oyun sıfırlandı. Başlat'a bas!";
+  message.className = "message";
+  levelLabel.textContent = "1";
+  timerLabel.textContent = "0";
+  roomLabel.textContent = "Oda: -";
+  targetsEl.innerHTML = "";
+  grid.innerHTML = "";
+}
+
+function difficulty(level) {
+  return {
+    cols: Math.min(4 + Math.floor((level - 1) / 4), 8),
+    rows: Math.min(3 + Math.floor((level - 1) / 5), 6),
+    targetCount: Math.min(2 + Math.floor((level - 1) / 3), 8),
+    seconds: Math.max(48 - level * 1.5, 18),
+  };
+}
+
+function startLevel(level) {
+  clearInterval(state.timer);
+  state.playing = true;
+  state.found.clear();
+  levelLabel.textContent = String(level);
+
+  const room = roomPools[(level - 1) % roomPools.length];
+  state.currentRoom = room;
+  roomLabel.textContent = `Oda: ${room.name}`;
+
+  const d = difficulty(level);
+  state.targets = shuffle([...room.items]).slice(0, d.targetCount);
+  state.timeLeft = Math.floor(d.seconds);
+  timerLabel.textContent = String(state.timeLeft);
+
+  renderTargets();
+  renderGrid(d.rows, d.cols, room, state.targets);
+
+  message.textContent = `Seviye ${level} başladı. ${state.targets.length} eşya bul!`;
+  message.className = "message";
+
+  state.timer = setInterval(() => {
+    state.timeLeft -= 1;
+    timerLabel.textContent = String(Math.max(state.timeLeft, 0));
+
+    if (state.timeLeft <= 0) {
+      clearInterval(state.timer);
+      state.playing = false;
+      message.textContent = "Süre doldu! Aynı seviyeyi tekrar dene.";
+      message.className = "message fail";
+    }
+  }, 1000);
+}
+
+function renderTargets() {
+  targetsEl.innerHTML = "";
+  state.targets.forEach((item) => {
+    const li = document.createElement("li");
+    li.dataset.item = item;
+    li.textContent = item;
+    targetsEl.appendChild(li);
   });
-  hintBtn.disabled = state.hintsLeft <= 0 || state.levelLocked;
-  nextBtn.disabled = !state.levelLocked;
 }
 
-function showFeedback(msg, bad = false) { feedback.textContent = msg; feedback.classList.toggle('bad', bad); }
-function addFoundRing(xPct, yPct) { const ring = document.createElement('div'); ring.className = 'found-ring'; ring.style.left = `${xPct}%`; ring.style.top = `${yPct}%`; stage.appendChild(ring); setTimeout(() => ring.remove(), 950); }
+function renderGrid(rows, cols, room, targets) {
+  grid.innerHTML = "";
+  const total = rows * cols;
+  grid.style.gridTemplateColumns = `repeat(${cols}, minmax(68px, 1fr))`;
 
-function showHint() {
-  if (state.hintsLeft <= 0 || state.levelLocked) return;
-  const target = state.currentTargets.find(t => !t.found); if (!target) return;
-  state.hintsLeft -= 1;
-  const pulse = document.createElement('div'); pulse.className = 'pulse'; pulse.style.left = `${target.x}%`; pulse.style.top = `${target.y}%`; stage.appendChild(pulse);
-  setTimeout(() => pulse.remove(), 1400); showFeedback(`Hint used: ${target.name} is around highlighted area.`); renderUI();
+  const decoys = shuffle(room.items.filter((x) => !targets.includes(x)));
+  const neededDecoys = Math.max(total - targets.length, 0);
+
+  const contents = [
+    ...targets.map((name) => ({ name, target: true })),
+    ...Array.from({ length: neededDecoys }, (_, i) => ({
+      name: decoys[i % decoys.length] || `Nesne ${i + 1}`,
+      target: false,
+    })),
+  ];
+
+  state.cells = shuffle(contents).slice(0, total);
+
+  state.cells.forEach((cell, idx) => {
+    const btn = document.createElement("button");
+    btn.className = "cell";
+    const icon = symbols[(idx + state.level) % symbols.length];
+    btn.innerHTML = `<strong>${icon}</strong><br><span>${cell.name}</span>`;
+    btn.addEventListener("click", () => handlePick(btn, cell));
+    grid.appendChild(btn);
+  });
 }
 
-function completeLevel(success) {
-  clearInterval(state.timerId); state.levelLocked = true; nextBtn.disabled = false;
-  if (success) { state.score += Math.max(0, state.timeLeft) * 12; overlayTitle.textContent = 'Level Complete!'; overlayText.textContent = `${LEVELS[state.levelIndex].name} cleared. Time bonus added.`; }
-  else { overlayTitle.textContent = 'Time Up!'; overlayText.textContent = 'You ran out of time. Move to next level.'; }
-  overlay.classList.add('show'); renderUI();
+function handlePick(button, cell) {
+  if (!state.playing || button.classList.contains("found")) return;
+
+  if (cell.target) {
+    state.found.add(cell.name);
+    button.classList.add("found");
+
+    const li = targetsEl.querySelector(`[data-item="${CSS.escape(cell.name)}"]`);
+    if (li) li.classList.add("found");
+
+    if (state.found.size === state.targets.length) {
+      clearInterval(state.timer);
+      state.playing = false;
+
+      if (state.level === state.maxLevel) {
+        message.textContent = "Tebrikler! 20 seviyenin tamamını bitirdin 🎉";
+        message.className = "message ok";
+      } else {
+        message.textContent = `Harika! Seviye ${state.level} tamamlandı.`;
+        message.className = "message ok";
+        state.level += 1;
+        setTimeout(() => startLevel(state.level), 1200);
+      }
+    }
+  } else {
+    button.style.background = "#ffe8ec";
+    setTimeout(() => {
+      if (!button.classList.contains("found")) button.style.background = "";
+    }, 350);
+    state.timeLeft = Math.max(state.timeLeft - 2, 0);
+    timerLabel.textContent = String(state.timeLeft);
+  }
 }
 
-function startTimer() {
-  clearInterval(state.timerId);
-  state.timerId = setInterval(() => { state.timeLeft -= 1; if (state.timeLeft <= 0) { state.timeLeft = 0; completeLevel(false); } renderUI(); }, 1000);
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
-
-function handleSceneClick(event) {
-  if (state.levelLocked) return;
-  const rect = sceneImage.getBoundingClientRect();
-  const x = ((event.clientX - rect.left) / rect.width) * 100;
-  const y = ((event.clientY - rect.top) / rect.height) * 100;
-  const target = state.currentTargets.find(t => !t.found && Math.hypot(t.x - x, t.y - y) <= t.radius);
-  if (target) { target.found = true; state.score += 160; addFoundRing(target.x, target.y); showFeedback(`Found: ${target.name}`); if (allFound()) completeLevel(true); }
-  else { state.timeLeft = Math.max(0, state.timeLeft - 4); state.score = Math.max(0, state.score - 40); showFeedback('Wrong click: -4s and -40 score', true); }
-  renderUI();
-}
-
-function applyZoom() { stage.style.transform = `scale(${state.zoom})`; stage.style.width = `${100 / state.zoom}%`; }
-function startLevel(index) {
-  overlay.classList.remove('show');
-  const level = LEVELS[index]; state.levelIndex = index; state.levelLocked = false;
-  state.timeLeft = Math.max(40, level.baseTime - index * 3); state.currentTargets = generateTargets(level);
-  sceneImage.src = level.image; showFeedback(`Level: ${level.name}`); renderUI(); startTimer();
-}
-function nextLevel() {
-  if (state.levelIndex + 1 < LEVELS.length) startLevel(state.levelIndex + 1);
-  else { overlay.classList.remove('show'); showFeedback(`Game completed! Final score: ${state.score}`); nextBtn.disabled = true; hintBtn.disabled = true; }
-}
-
-sceneImage.addEventListener('click', handleSceneClick);
-hintBtn.addEventListener('click', showHint);
-nextBtn.addEventListener('click', nextLevel);
-zoomRange.addEventListener('input', e => { state.zoom = Number(e.target.value); applyZoom(); });
-
-let isDragging = false, lastX = 0, lastY = 0;
-stageScroll.addEventListener('mousedown', (e) => { if (state.zoom <= 1) return; isDragging = true; lastX = e.clientX; lastY = e.clientY; stageScroll.style.cursor = 'grabbing'; });
-window.addEventListener('mouseup', () => { isDragging = false; stageScroll.style.cursor = 'default'; });
-window.addEventListener('mousemove', (e) => { if (!isDragging) return; const dx = e.clientX - lastX, dy = e.clientY - lastY; stageScroll.scrollLeft -= dx; stageScroll.scrollTop -= dy; lastX = e.clientX; lastY = e.clientY; });
-
-startLevel(0);
