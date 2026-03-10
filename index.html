@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Saklı Eşya Avı</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game">
+      <header class="topbar">
+        <div>
+          <h1>Saklı Eşya Avı</h1>
+          <p id="roomLabel">Oda: -</p>
+        </div>
+        <div class="stats">
+          <p>Seviye: <span id="levelLabel">1</span>/20</p>
+          <p>Süre: <span id="timerLabel">0</span>s</p>
+        </div>
+      </header>
+
+      <section class="panel">
+        <h2>Bulunacak Eşyalar</h2>
+        <ul id="targets"></ul>
+      </section>
+
+      <section id="grid" class="grid" aria-label="oyun tahtası"></section>
+
+      <section class="controls">
+        <button id="startBtn">Oyunu Başlat</button>
+        <button id="restartBtn">Baştan Oyna</button>
+      </section>
+
+      <p id="message" class="message"></p>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
