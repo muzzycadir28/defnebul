@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hidden Object Hunt</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="panel">
+      <h1 class="title">Hidden Object Hunt</h1>
+      <p class="subtitle">Find all listed items in realistic photo scenes.</p>
+
+      <div class="stats">
+        <div class="stat"><div class="label">Level</div><div id="levelValue" class="value">1 / 5</div></div>
+        <div class="stat"><div class="label">Timer</div><div id="timerValue" class="value">90s</div></div>
+        <div class="stat"><div class="label">Score</div><div id="scoreValue" class="value">0</div></div>
+        <div class="stat"><div class="label">Hints</div><div id="hintValue" class="value">3</div></div>
+      </div>
+
+      <strong>Objects to find</strong>
+      <ul id="objectList" class="object-list"></ul>
+
+      <div class="controls">
+        <button id="hintBtn">Use Hint</button>
+        <button id="nextBtn" class="secondary" disabled>Next Level</button>
+        <div class="zoom-wrap">
+          <label for="zoomRange">Zoom</label>
+          <input id="zoomRange" type="range" min="1" max="2.5" step="0.1" value="1" />
+        </div>
+      </div>
+
+      <div id="feedback" class="feedback"></div>
+    </aside>
+
+    <section class="panel stage-panel">
+      <div id="stageScroll" class="stage-scroll">
+        <div id="stage" class="stage">
+          <img id="sceneImage" alt="Hidden object scene" crossorigin="anonymous" />
+          <div id="overlay" class="overlay-msg">
+            <div class="overlay-card">
+              <h2 id="overlayTitle">Level Complete!</h2>
+              <p id="overlayText"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
