@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hidden Object Hunt</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a2f;
+      --panel-2: #1a2540;
+      --accent: #60a5fa;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --text: #ecf2ff;
+      --muted: #9fb1d9;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at 20% 0%, #1c2a4f 0%, var(--bg) 45%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .app {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      grid-template-columns: 320px 1fr;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--panel);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .title { margin: 0 0 4px; }
+    .subtitle { color: var(--muted); margin: 0 0 10px; font-size: 0.9rem; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .stat {
+      background: var(--panel-2);
+      border-radius: 10px;
+      padding: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .stat .label { color: var(--muted); font-size: 0.78rem; }
+    .stat .value { font-size: 1.2rem; font-weight: 700; margin-top: 3px; }
+
+    .object-list {
+      list-style: none;
+      margin: 8px 0 0;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+      max-height: 320px;
+      overflow: auto;
+    }
+
+    .object-item {
+      background: var(--panel-2);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 8px 10px;
+      border-radius: 9px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all .2s ease;
+    }
+
+    .object-item.found {
+      text-decoration: line-through;
+      color: #87a0d1;
+      border-color: rgba(34, 197, 94, 0.6);
+      background: rgba(34, 197, 94, 0.12);
+    }
+
+    .controls {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    button, input[type="range"] {
+      width: 100%;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: #041229;
+    }
+
+    button.secondary { background: #334155; color: #e5edff; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .zoom-wrap { margin-top: 6px; }
+    .zoom-wrap label { color: var(--muted); font-size: .85rem; }
+
+    .stage-panel { padding: 10px; }
+    .stage-scroll {
+      overflow: auto;
+      max-height: 82vh;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: #0a0f1e;
+      position: relative;
+    }
+
+    .stage {
+      position: relative;
+      transform-origin: top left;
+      user-select: none;
+      width: 100%;
+      line-height: 0;
+    }
+
+    .stage img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .pulse {
+      position: absolute;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 3px solid var(--warn);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      animation: hintPulse 1s ease-out infinite;
+      z-index: 4;
+    }
+
+    .found-ring {
+      position: absolute;
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      border: 3px solid var(--ok);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      animation: foundAnim .9s ease-out forwards;
+      z-index: 3;
+    }
+
+    .overlay-msg {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 8, 23, 0.65);
+      z-index: 10;
+      text-align: center;
+    }
+
+    .overlay-msg.show { display: flex; }
+    .overlay-card {
+      background: #081126;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 12px;
+      padding: 18px;
+      animation: pop .45s ease;
+    }
+
+    .feedback { min-height: 20px; color: var(--muted); margin-top: 8px; }
+    .bad { color: var(--danger); }
+
+    @keyframes hintPulse {
+      0% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+    }
+    @keyframes foundAnim {
+      0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+    }
+    @keyframes pop {
+      from { transform: scale(.7); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+      .stage-scroll { max-height: 62vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="panel">
+      <h1 class="title">Hidden Object Hunt</h1>
+      <p class="subtitle">Find all listed items in realistic photo scenes.</p>
+
+      <div class="stats">
+        <div class="stat"><div class="label">Level</div><div id="levelValue" class="value">1 / 5</div></div>
+        <div class="stat"><div class="label">Timer</div><div id="timerValue" class="value">90s</div></div>
+        <div class="stat"><div class="label">Score</div><div id="scoreValue" class="value">0</div></div>
+        <div class="stat"><div class="label">Hints</div><div id="hintValue" class="value">3</div></div>
+      </div>
+
+      <strong>Objects to find</strong>
+      <ul id="objectList" class="object-list"></ul>
+
+      <div class="controls">
+        <button id="hintBtn">Use Hint</button>
+        <button id="nextBtn" class="secondary" disabled>Next Level</button>
+        <div class="zoom-wrap">
+          <label for="zoomRange">Zoom</label>
+          <input id="zoomRange" type="range" min="1" max="2.5" step="0.1" value="1" />
+        </div>
+      </div>
+
+      <div id="feedback" class="feedback"></div>
+    </aside>
+
+    <section class="panel stage-panel">
+      <div id="stageScroll" class="stage-scroll">
+        <div id="stage" class="stage">
+          <img id="sceneImage" alt="Hidden object scene" crossorigin="anonymous" />
+          <div id="overlay" class="overlay-msg">
+            <div class="overlay-card">
+              <h2 id="overlayTitle">Level Complete!</h2>
+              <p id="overlayText"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // 5 realistic scenes (Unsplash image URLs)
+    const LEVELS = [
+      {
+        name: "Messy Living Room",
+        image: "https://images.unsplash.com/photo-1484101403633-562f891dc89a?auto=format&fit=crop&w=1800&q=80",
+        baseTime: 95,
+        objects: [
+          { name: "Lamp", x: 18, y: 27, radius: 4.8 },
+          { name: "Plant", x: 80, y: 42, radius: 5 },
+          { name: "Pillow", x: 36, y: 61, radius: 5.2 },
+          { name: "Book", x: 57, y: 70, radius: 5 },
+          { name: "Mug", x: 49, y: 63, radius: 4.8 },
+          { name: "Remote", x: 44, y: 68, radius: 4.5 }
+        ]
+      },
+      {
+        name: "Office Desk",
+        image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1800&q=80",
+        baseTime: 85,
+        objects: [
+          { name: "Keyboard", x: 53, y: 75, radius: 5.5 },
+          { name: "Phone", x: 32, y: 67, radius: 5 },
+          { name: "Notebook", x: 66, y: 62, radius: 5 },
+          { name: "Coffee Cup", x: 76, y: 48, radius: 5 },
+          { name: "Pen", x: 61, y: 70, radius: 4.6 },
+          { name: "Headphones", x: 22, y: 58, radius: 5.2 }
+        ]
+      },
+      {
+        name: "Street Market",
+        image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1800&q=80",
+        baseTime: 80,
+        objects: [
+          { name: "Hat", x: 29, y: 28, radius: 5 },
+          { name: "Backpack", x: 70, y: 63, radius: 5.2 },
+          { name: "Crate", x: 57, y: 73, radius: 5.2 },
+          { name: "Scooter", x: 19, y: 77, radius: 5.2 },
+          { name: "Sign", x: 76, y: 21, radius: 5 },
+          { name: "Bottle", x: 47, y: 65, radius: 4.5 }
+        ]
+      },
+      {
+        name: "Playground",
+        image: "https://images.unsplash.com/photo-1520694478166-daaaaec95b69?auto=format&fit=crop&w=1800&q=80",
+        baseTime: 75,
+        objects: [
+          { name: "Slide", x: 38, y: 49, radius: 5.5 },
+          { name: "Ball", x: 63, y: 75, radius: 4.8 },
+          { name: "Bench", x: 70, y: 62, radius: 5.2 },
+          { name: "Swing", x: 20, y: 54, radius: 5.2 },
+          { name: "Bottle", x: 54, y: 68, radius: 4.5 },
+          { name: "Backpack", x: 45, y: 70, radius: 5 }
+        ]
+      },
+      {
+        name: "Library Study Room",
+        image: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1800&q=80",
+        baseTime: 70,
+        objects: [
+          { name: "Glasses", x: 43, y: 66, radius: 4.8 },
+          { name: "Clock", x: 74, y: 16, radius: 5 },
+          { name: "Laptop", x: 56, y: 72, radius: 5.2 },
+          { name: "Book Stack", x: 30, y: 63, radius: 5.2 },
+          { name: "Desk Lamp", x: 68, y: 48, radius: 5 },
+          { name: "Notebook", x: 50, y: 68, radius: 4.8 }
+        ]
+      }
+    ];
+
+    const state = {
+      levelIndex: 0,
+      hintsLeft: 3,
+      score: 0,
+      timeLeft: 0,
+      timerId: null,
+      currentTargets: [],
+      completedLevels: 0,
+      zoom: 1,
+      levelLocked: false
+    };
+
+    const sceneImage = document.getElementById('sceneImage');
+    const objectList = document.getElementById('objectList');
+    const timerValue = document.getElementById('timerValue');
+    const scoreValue = document.getElementById('scoreValue');
+    const hintValue = document.getElementById('hintValue');
+    const levelValue = document.getElementById('levelValue');
+    const feedback = document.getElementById('feedback');
+    const hintBtn = document.getElementById('hintBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const stage = document.getElementById('stage');
+    const stageScroll = document.getElementById('stageScroll');
+    const zoomRange = document.getElementById('zoomRange');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlayText = document.getElementById('overlayText');
+
+    function shuffle(arr) {
+      return [...arr].sort(() => Math.random() - 0.5);
+    }
+
+    // Advanced feature: procedural list generation from each level's object pool.
+    function generateTargets(level) {
+      const difficultyCount = Math.min(5 + state.levelIndex, level.objects.length);
+      return shuffle(level.objects).slice(0, difficultyCount).map(o => ({ ...o, found: false }));
+    }
+
+    function renderUI() {
+      levelValue.textContent = `${state.levelIndex + 1} / ${LEVELS.length}`;
+      timerValue.textContent = `${Math.max(0, state.timeLeft)}s`;
+      scoreValue.textContent = state.score;
+      hintValue.textContent = state.hintsLeft;
+
+      objectList.innerHTML = '';
+      state.currentTargets.forEach(target => {
+        const li = document.createElement('li');
+        li.className = `object-item ${target.found ? 'found' : ''}`;
+        li.innerHTML = `<span>${target.name}</span><span>${target.found ? '✓' : ''}</span>`;
+        objectList.appendChild(li);
+      });
+
+      hintBtn.disabled = state.hintsLeft <= 0 || state.levelLocked;
+      nextBtn.disabled = !state.levelLocked;
+    }
+
+    function showFeedback(msg, bad = false) {
+      feedback.textContent = msg;
+      feedback.classList.toggle('bad', bad);
+    }
+
+    function addFoundRing(xPct, yPct) {
+      const ring = document.createElement('div');
+      ring.className = 'found-ring';
+      ring.style.left = `${xPct}%`;
+      ring.style.top = `${yPct}%`;
+      stage.appendChild(ring);
+      setTimeout(() => ring.remove(), 950);
+    }
+
+    function showHint() {
+      if (state.hintsLeft <= 0 || state.levelLocked) return;
+      const target = state.currentTargets.find(t => !t.found);
+      if (!target) return;
+
+      state.hintsLeft -= 1;
+      const pulse = document.createElement('div');
+      pulse.className = 'pulse';
+      pulse.style.left = `${target.x}%`;
+      pulse.style.top = `${target.y}%`;
+      stage.appendChild(pulse);
+      setTimeout(() => pulse.remove(), 1400);
+      showFeedback(`Hint used: ${target.name} is around highlighted area.`);
+      renderUI();
+    }
+
+    function completeLevel(success) {
+      clearInterval(state.timerId);
+      state.levelLocked = true;
+      nextBtn.disabled = false;
+
+      if (success) {
+        state.completedLevels += 1;
+        state.score += Math.max(0, state.timeLeft) * 12;
+        overlayTitle.textContent = 'Level Complete!';
+        overlayText.textContent = `${LEVELS[state.levelIndex].name} cleared. Time bonus added.`;
+      } else {
+        overlayTitle.textContent = 'Time Up!';
+        overlayText.textContent = 'You ran out of time. Move to next level.';
+      }
+
+      overlay.classList.add('show');
+      renderUI();
+    }
+
+    function startTimer() {
+      clearInterval(state.timerId);
+      state.timerId = setInterval(() => {
+        state.timeLeft -= 1;
+        if (state.timeLeft <= 0) {
+          state.timeLeft = 0;
+          completeLevel(false);
+        }
+        renderUI();
+      }, 1000);
+    }
+
+    function allFound() {
+      return state.currentTargets.every(t => t.found);
+    }
+
+    function getImagePercentCoordinates(event) {
+      const rect = sceneImage.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 100;
+      const y = ((event.clientY - rect.top) / rect.height) * 100;
+      return { x, y };
+    }
+
+    function handleSceneClick(event) {
+      if (state.levelLocked) return;
+      const { x, y } = getImagePercentCoordinates(event);
+      const target = state.currentTargets.find(t => !t.found && Math.hypot(t.x - x, t.y - y) <= t.radius);
+
+      if (target) {
+        target.found = true;
+        state.score += 160;
+        addFoundRing(target.x, target.y);
+        showFeedback(`Found: ${target.name}`);
+        if (allFound()) completeLevel(true);
+      } else {
+        state.timeLeft = Math.max(0, state.timeLeft - 4);
+        state.score = Math.max(0, state.score - 40);
+        showFeedback('Wrong click: -4s and -40 score', true);
+      }
+
+      renderUI();
+    }
+
+    function applyZoom() {
+      stage.style.transform = `scale(${state.zoom})`;
+      stage.style.width = `${100 / state.zoom}%`;
+    }
+
+    function startLevel(index) {
+      overlay.classList.remove('show');
+      const level = LEVELS[index];
+      state.levelIndex = index;
+      state.levelLocked = false;
+      state.timeLeft = Math.max(40, level.baseTime - index * 3); // progressive difficulty
+      state.currentTargets = generateTargets(level);
+
+      sceneImage.src = level.image;
+      showFeedback(`Level: ${level.name}`);
+      renderUI();
+      startTimer();
+    }
+
+    function nextLevel() {
+      if (state.levelIndex + 1 < LEVELS.length) {
+        startLevel(state.levelIndex + 1);
+      } else {
+        overlay.classList.remove('show');
+        showFeedback(`Game completed! Final score: ${state.score}`);
+        nextBtn.disabled = true;
+        hintBtn.disabled = true;
+      }
+    }
+
+    sceneImage.addEventListener('click', handleSceneClick);
+    hintBtn.addEventListener('click', showHint);
+    nextBtn.addEventListener('click', nextLevel);
+    zoomRange.addEventListener('input', e => {
+      state.zoom = Number(e.target.value);
+      applyZoom();
+    });
+
+    // small drag-to-pan on zoomed image
+    let isDragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    stageScroll.addEventListener('mousedown', (e) => {
+      if (state.zoom <= 1) return;
+      isDragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      stageScroll.style.cursor = 'grabbing';
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; stageScroll.style.cursor = 'default'; });
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      stageScroll.scrollLeft -= dx;
+      stageScroll.scrollTop -= dy;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    startLevel(0);
+  </script>
+</body>
+</html>
