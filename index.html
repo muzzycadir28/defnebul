@@ -1,39 +1,640 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Saklı Eşya Avı</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <main class="game">
-      <header class="topbar">
-        <div>
-          <h1>Saklı Eşya Avı</h1>
-          <p id="roomLabel">Oda: -</p>
-        </div>
-        <div class="stats">
-          <p>Seviye: <span id="levelLabel">1</span>/20</p>
-          <p>Süre: <span id="timerLabel">0</span>s</p>
-        </div>
-      </header>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saklı Eşyalar</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
 
-      <section class="panel">
-        <h2>Bulunacak Eşyalar</h2>
-        <ul id="targets"></ul>
-      </section>
+  :root {
+    --bg: #0f1923;
+    --panel: #1a2635;
+    --accent: #f5a623;
+    --accent2: #e74c7d;
+    --green: #2ecc71;
+    --text: #eef2f7;
+    --muted: #8899aa;
+    --card: #233044;
+  }
 
-      <section id="grid" class="grid" aria-label="oyun tahtası"></section>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-      <section class="controls">
-        <button id="startBtn">Oyunu Başlat</button>
-        <button id="restartBtn">Baştan Oyna</button>
-      </section>
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-      <p id="message" class="message"></p>
-    </main>
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
 
-    <script src="script.js"></script>
-  </body>
+  #intro {
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at 50% 30%, #1e3a5f 0%, #0f1923 70%);
+    text-align: center;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  #intro::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .intro-emoji { font-size: 5rem; animation: float 3s ease-in-out infinite; position: relative; z-index:1; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
+  .intro-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    color: var(--accent);
+    text-shadow: 0 0 40px rgba(245,166,35,0.4);
+    margin: 1rem 0 0.5rem;
+    position: relative; z-index:1;
+  }
+  .intro-sub { font-size: 1.1rem; color: var(--muted); margin-bottom: 2.5rem; max-width: 400px; position:relative;z-index:1; }
+  .btn-start {
+    background: linear-gradient(135deg, var(--accent), #e8901a);
+    color: #1a0a00;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem;
+    padding: 1rem 3rem;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 8px 30px rgba(245,166,35,0.4);
+    transition: all 0.2s;
+    position: relative; z-index:1;
+  }
+  .btn-start:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 12px 40px rgba(245,166,35,0.5); }
+  .level-badges {
+    display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center;
+    max-width: 360px; margin-top: 2rem; position:relative;z-index:1;
+  }
+  .level-badge {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--card); border: 2px solid #2a3f55;
+    font-size: 0.7rem; font-weight: 800; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+  }
+  .level-badge.done { background: var(--green); border-color: var(--green); color: #fff; }
+
+  #game { flex-direction: column; }
+
+  .topbar {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.8rem 1.2rem;
+    background: var(--panel);
+    border-bottom: 1px solid #1e3a55;
+    flex-wrap: wrap;
+  }
+  .level-label { font-family: 'Fredoka One', cursive; font-size: 1.1rem; color: var(--accent); white-space: nowrap; }
+  .room-label { font-weight: 700; font-size: 0.95rem; color: var(--text); flex:1; }
+  .timer-box {
+    display: flex; align-items: center; gap: 0.4rem;
+    background: var(--card); padding: 0.3rem 0.8rem;
+    border-radius: 20px; font-weight: 800; font-size: 1rem;
+  }
+  .timer-box.urgent { color: #e74c3c; animation: pulse 0.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .score-box { background: var(--card); padding: 0.3rem 0.8rem; border-radius: 20px; font-weight: 800; font-size: 1rem; color: var(--accent); }
+  .hint-btn {
+    background: var(--accent2); color: #fff; border: none;
+    padding: 0.3rem 0.9rem; border-radius: 20px;
+    font-family: 'Nunito', sans-serif; font-weight: 700; cursor: pointer;
+    font-size: 0.85rem; transition: opacity 0.2s;
+  }
+  .hint-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .game-body { display: flex; flex: 1; overflow: hidden; flex-direction: row; }
+
+  .scene-wrap {
+    flex: 1; position: relative; overflow: hidden;
+    cursor: crosshair; min-height: 400px;
+  }
+  .scene-bg {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(200px, 40vw, 380px);
+    user-select: none; pointer-events: none;
+    filter: brightness(0.35);
+  }
+  .scene-title {
+    position: absolute; top: 1rem; left: 50%; transform: translateX(-50%);
+    font-family: 'Fredoka One', cursive; font-size: 1.3rem;
+    color: rgba(255,255,255,0.5); pointer-events: none;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8); white-space: nowrap;
+  }
+
+  .hidden-item {
+    position: absolute; font-size: 2rem; cursor: pointer;
+    transition: transform 0.15s;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    user-select: none; line-height: 1; z-index: 5;
+  }
+  .hidden-item:hover { transform: scale(1.2); }
+  .hidden-item.found { animation: found-pop 0.5s forwards; pointer-events: none; }
+  @keyframes found-pop {
+    0%{transform:scale(1)} 40%{transform:scale(1.8)} 60%{transform:scale(0.8)} 100%{transform:scale(0) rotate(180deg); opacity:0;}
+  }
+
+  .decor-item {
+    position: absolute; font-size: 2rem;
+    pointer-events: none; user-select: none; opacity: 0.6; line-height: 1;
+  }
+
+  .hint-glow {
+    position: absolute; width: 60px; height: 60px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(245,166,35,0.6) 0%, transparent 70%);
+    pointer-events: none; animation: hglow 1.5s ease-out forwards;
+    transform: translate(-50%, -50%); z-index: 10;
+  }
+  @keyframes hglow { 0%{opacity:1;transform:translate(-50%,-50%) scale(0.3)} 100%{opacity:0;transform:translate(-50%,-50%) scale(2)} }
+
+  .ripple {
+    position: absolute; width: 40px; height: 40px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.4); pointer-events: none;
+    animation: ripple-anim 0.4s ease-out forwards;
+    transform: translate(-50%, -50%); z-index: 9;
+  }
+  @keyframes ripple-anim { 0%{opacity:1;transform:translate(-50%,-50%) scale(0.2)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)} }
+
+  .miss-flash { position:absolute; inset:0; background:rgba(231,76,60,0.15); pointer-events:none; animation: flash 0.3s; }
+  @keyframes flash { 0%,100%{opacity:0} 50%{opacity:1} }
+
+  .sidebar {
+    width: 200px; background: var(--panel);
+    border-left: 1px solid #1e3a55; padding: 1rem;
+    overflow-y: auto; flex-shrink: 0;
+  }
+  .sidebar h3 { font-family: 'Fredoka One', cursive; font-size: 1rem; color: var(--accent); margin-bottom: 0.8rem; text-align: center; }
+  .item-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .item-card {
+    background: var(--card); border-radius: 10px; padding: 0.5rem 0.7rem;
+    display: flex; align-items: center; gap: 0.6rem;
+    border: 1px solid transparent; transition: all 0.3s;
+  }
+  .item-card.found-card { border-color: var(--green); background: rgba(46,204,113,0.1); opacity: 0.6; }
+  .item-card .item-emoji { font-size: 1.4rem; }
+  .item-card .item-name { font-size: 0.8rem; font-weight: 700; flex:1; }
+  .item-card .check { color: var(--green); font-size: 1rem; }
+
+  .progress-wrap { padding: 0.5rem 1.2rem; background: var(--panel); }
+  .progress-bar { height: 6px; background: var(--card); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--green), #27ae60); border-radius: 3px; transition: width 0.4s; }
+
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 100;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .overlay.show { display: flex; }
+  .overlay-card {
+    background: var(--panel); border-radius: 20px;
+    padding: 2.5rem 2rem; text-align: center;
+    max-width: 380px; width: 90%;
+    border: 1px solid #2a4060;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    animation: pop-in 0.3s ease;
+  }
+  @keyframes pop-in { from{transform:scale(0.7);opacity:0} to{transform:scale(1);opacity:1} }
+  .overlay-card .big-emoji { font-size: 4rem; margin-bottom: 0.5rem; }
+  .overlay-card h2 { font-family:'Fredoka One',cursive; font-size:2rem; margin-bottom:0.5rem; }
+  .overlay-card p { color: var(--muted); margin-bottom: 1.5rem; }
+  .overlay-card .stats { display:flex; gap:1rem; justify-content:center; margin-bottom:1.5rem; }
+  .stat-box { background:var(--card); border-radius:12px; padding:0.8rem 1.2rem; }
+  .stat-box .sval { font-family:'Fredoka One',cursive; font-size:1.5rem; color:var(--accent); }
+  .stat-box .slabel { font-size:0.75rem; color:var(--muted); }
+  .btn-next {
+    background: linear-gradient(135deg, var(--green), #27ae60);
+    color: #fff; border: none; border-radius: 50px;
+    font-family:'Fredoka One',cursive; font-size:1.3rem;
+    padding: 0.8rem 2.5rem; cursor:pointer;
+    box-shadow: 0 6px 20px rgba(46,204,113,0.4);
+    transition: all 0.2s; display:inline-block; margin:0.3rem;
+  }
+  .btn-next:hover { transform:translateY(-2px); }
+  .btn-retry {
+    background: var(--accent2); color:#fff; border:none; border-radius:50px;
+    font-family:'Fredoka One',cursive; font-size:1.1rem;
+    padding: 0.7rem 2rem; cursor:pointer; display:inline-block; margin:0.3rem;
+    transition: all 0.2s;
+  }
+  .btn-retry:hover { transform:translateY(-2px); }
+
+  .toast {
+    position:fixed; bottom:2rem; left:50%; transform:translateX(-50%);
+    background:var(--card); color:var(--text); padding:0.7rem 1.5rem;
+    border-radius:30px; font-weight:700; z-index:200;
+    animation: toast-in 0.3s ease, toast-out 0.3s ease 1.5s forwards;
+    border: 1px solid #2a4060; pointer-events:none;
+  }
+  @keyframes toast-in { from{opacity:0;transform:translateX(-50%) translateY(20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+  @keyframes toast-out { from{opacity:1} to{opacity:0;transform:translateX(-50%) translateY(20px)} }
+
+  @media(max-width:600px) {
+    .sidebar { width:100%; max-height:140px; border-left:none; border-top:1px solid #1e3a55; }
+    .sidebar .item-list { flex-direction:row; flex-wrap:wrap; }
+    .game-body { flex-direction:column; }
+    .item-card { min-width:120px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="intro" class="screen active">
+  <div class="intro-emoji">🔍</div>
+  <h1 class="intro-title">Saklı Eşyalar</h1>
+  <p class="intro-sub">Odalara gizlenmiş eşyaları bul! 20 kademe, her aşamada artan zorluk.</p>
+  <button class="btn-start" id="startBtn">Oyuna Başla!</button>
+  <div class="level-badges" id="levelBadges"></div>
+</div>
+
+<div id="game" class="screen">
+  <div class="topbar">
+    <span class="level-label" id="levelLabel">Kademe 1</span>
+    <span class="room-label" id="roomLabel"></span>
+    <div class="timer-box" id="timerBox">⏱ <span id="timerVal">60</span>s</div>
+    <div class="score-box">⭐ <span id="scoreVal">0</span></div>
+    <button class="hint-btn" id="hintBtn">💡 İpucu (<span id="hintCount">3</span>)</button>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+  <div class="game-body">
+    <div class="scene-wrap" id="sceneWrap">
+      <div class="scene-bg" id="sceneBg"></div>
+      <div class="scene-title" id="sceneTitle"></div>
+    </div>
+    <div class="sidebar">
+      <h3>Bul bunları!</h3>
+      <div class="item-list" id="itemList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="levelWinOverlay">
+  <div class="overlay-card">
+    <div class="big-emoji" id="winEmoji">🎉</div>
+    <h2 id="winTitle">Harika!</h2>
+    <p id="winMsg"></p>
+    <div class="stats">
+      <div class="stat-box"><div class="sval" id="winTime">0s</div><div class="slabel">Süre</div></div>
+      <div class="stat-box"><div class="sval" id="winScore">0</div><div class="slabel">Puan</div></div>
+    </div>
+    <button class="btn-next" id="nextBtn">Sonraki Kademe →</button>
+  </div>
+</div>
+
+<div class="overlay" id="levelFailOverlay">
+  <div class="overlay-card">
+    <div class="big-emoji">⏰</div>
+    <h2 style="color:#e74c3c">Süre Doldu!</h2>
+    <p id="failMsg"></p>
+    <button class="btn-retry" id="retryBtn">🔄 Tekrar Dene</button>
+    <button class="btn-next" id="skipBtn">→ Atla</button>
+  </div>
+</div>
+
+<div class="overlay" id="gameWinOverlay">
+  <div class="overlay-card">
+    <div class="big-emoji">🏆</div>
+    <h2 style="color:var(--accent)">Tebrikler!</h2>
+    <p>Tüm 20 kademeyi tamamladın!</p>
+    <div class="stats">
+      <div class="stat-box"><div class="sval" id="totalScore">0</div><div class="slabel">Toplam Puan</div></div>
+    </div>
+    <button class="btn-next" id="restartBtn">🔁 Baştan Oyna</button>
+  </div>
+</div>
+
+<script>
+const LEVELS = [
+  { room:"🏠 Oturma Odası", bg:"🏠", title:"Oturma Odası", time:90, hints:3,
+    items:[{e:"🔑",n:"Anahtar"},{e:"📱",n:"Telefon"},{e:"🕯️",n:"Mum"}],
+    decor:["🛋️","📺","🪴","🖼️","🧸"] },
+  { room:"🍳 Mutfak", bg:"🍳", title:"Mutfak", time:85, hints:3,
+    items:[{e:"🥄",n:"Kaşık"},{e:"🧂",n:"Tuz"},{e:"🍎",n:"Elma"},{e:"🧲",n:"Magnet"}],
+    decor:["🥘","🫖","🧅","🥕","🍳"] },
+  { room:"🛏️ Yatak Odası", bg:"🛏️", title:"Yatak Odası", time:80, hints:3,
+    items:[{e:"💊",n:"İlaç"},{e:"📚",n:"Kitap"},{e:"🧦",n:"Çorap"},{e:"⌚",n:"Saat"}],
+    decor:["🛏️","🪞","🪟","👕","🧴"] },
+  { room:"🚿 Banyo", bg:"🚿", title:"Banyo", time:75, hints:2,
+    items:[{e:"🪥",n:"Diş Fırçası"},{e:"🧼",n:"Sabun"},{e:"✂️",n:"Makas"},{e:"🪒",n:"Tıraş"}],
+    decor:["🛁","🚿","🪣","🧻","🪠"] },
+  { room:"🏫 Sınıf", bg:"🏫", title:"Okul Sınıfı", time:75, hints:2,
+    items:[{e:"📏",n:"Cetvel"},{e:"🖊️",n:"Kalem"},{e:"📐",n:"Gönye"},{e:"🗂️",n:"Dosya"},{e:"🔋",n:"Pil"}],
+    decor:["🖥️","📋","🗓️","🪑","📌"] },
+  { room:"📚 Kütüphane", bg:"📚", title:"Kütüphane", time:70, hints:2,
+    items:[{e:"🔖",n:"Kitap Ayracı"},{e:"🖋️",n:"Dolma Kalem"},{e:"📓",n:"Defter"},{e:"🔍",n:"Büyüteç"},{e:"🗞️",n:"Gazete"}],
+    decor:["📚","🪑","🖥️","📜","🏺"] },
+  { room:"💼 Ofis", bg:"🏢", title:"Ofis", time:65, hints:2,
+    items:[{e:"📎",n:"Ataş"},{e:"🖱️",n:"Mouse"},{e:"💾",n:"Disk"},{e:"🗃️",n:"Kutu"},{e:"🔌",n:"Adaptör"}],
+    decor:["💻","🖨️","📞","☕","🖊️"] },
+  { room:"🏥 Klinik", bg:"🏥", title:"Klinik", time:65, hints:2,
+    items:[{e:"🩺",n:"Steteskop"},{e:"💉",n:"Şırınga"},{e:"🩹",n:"Yara Bandı"},{e:"🧬",n:"Gen Kodu"},{e:"🩻",n:"Röntgen"}],
+    decor:["🛏️","🚑","💊","🧪","🔬"] },
+  { room:"🔬 Laboratuvar", bg:"🔬", title:"Laboratuvar", time:60, hints:2,
+    items:[{e:"⚗️",n:"Beher"},{e:"🧪",n:"Tüp"},{e:"🧫",n:"Petri Kabı"},{e:"🔭",n:"Teleskop"},{e:"🧲",n:"Mıknatıs"},{e:"⚙️",n:"Dişli"}],
+    decor:["🔬","🖥️","📊","🗂️","🧯"] },
+  { room:"🏋️ Spor Salonu", bg:"🏋️", title:"Spor Salonu", time:60, hints:2,
+    items:[{e:"🥊",n:"Boks Eldiveni"},{e:"🎽",n:"Forma"},{e:"⏱️",n:"Kronometre"},{e:"🏐",n:"Voleybol"},{e:"🩴",n:"Spor Ayakkabı"},{e:"💪",n:"Ağırlık"}],
+    decor:["🏋️","🤸","🧘","🏃","🥅"] },
+  { room:"🏊 Yüzme Havuzu", bg:"🏊", title:"Yüzme Havuzu", time:55, hints:2,
+    items:[{e:"🥽",n:"Gözlük"},{e:"🩱",n:"Mayo"},{e:"🚿",n:"Duş Başlığı"},{e:"🎫",n:"Bilet"},{e:"🌡️",n:"Termometre"},{e:"🏄",n:"Sörf Tahtası"}],
+    decor:["🌊","🐟","💧","🧴","⛱️"] },
+  { room:"🛒 Market", bg:"🛒", title:"Market", time:55, hints:1,
+    items:[{e:"🥛",n:"Süt"},{e:"🧃",n:"Meyve Suyu"},{e:"🍞",n:"Ekmek"},{e:"🧀",n:"Peynir"},{e:"🥚",n:"Yumurta"},{e:"🛒",n:"Alışveriş Arabası"}],
+    decor:["🏪","🍫","🧴","🧹","🍕"] },
+  { room:"👗 Giyim Mağazası", bg:"🏬", title:"Giyim Mağazası", time:50, hints:1,
+    items:[{e:"🧣",n:"Atkı"},{e:"🧤",n:"Eldiven"},{e:"👒",n:"Şapka"},{e:"👜",n:"Çanta"},{e:"🪡",n:"İplik"},{e:"🔖",n:"Etiket"}],
+    decor:["👗","👔","🪞","🛍️","🪑"] },
+  { room:"🍔 Restoran", bg:"🍔", title:"Restoran", time:50, hints:1,
+    items:[{e:"🧂",n:"Tuz"},{e:"🫙",n:"Sos"},{e:"🍴",n:"Çatal-Bıçak"},{e:"🧾",n:"Fiş"},{e:"🕯️",n:"Mum"},{e:"🧋",n:"İçecek"}],
+    decor:["🍽️","🥗","🍷","🪑","🌹"] },
+  { room:"🎬 Sinema", bg:"🎬", title:"Sinema", time:45, hints:1,
+    items:[{e:"🎟️",n:"Bilet"},{e:"🍿",n:"Mısır"},{e:"🕶️",n:"3D Gözlük"},{e:"🔦",n:"El Feneri"},{e:"📽️",n:"Projeksiyon"},{e:"🎧",n:"Kulaklık"}],
+    decor:["🎞️","🎭","🪑","📺","🔈"] },
+  { room:"✈️ Havalimanı", bg:"✈️", title:"Havalimanı", time:45, hints:1,
+    items:[{e:"🧳",n:"Bavul"},{e:"🏷️",n:"Bagaj Etiketi"},{e:"💳",n:"Kart"},{e:"🔋",n:"Şarj Cihazı"},{e:"🎧",n:"Kulaklık"},{e:"📋",n:"Biniş Kartı"},{e:"🗺️",n:"Harita"}],
+    decor:["✈️","🛄","🏪","🌍","🚖"] },
+  { room:"🏦 Banka", bg:"🏦", title:"Banka", time:40, hints:1,
+    items:[{e:"💰",n:"Para"},{e:"📄",n:"Evrak"},{e:"🔐",n:"Kasa"},{e:"✒️",n:"Tükenmez"},{e:"📊",n:"Grafik"},{e:"🧮",n:"Hesap Makinesi"},{e:"🆔",n:"Kimlik"}],
+    decor:["🏧","💼","🪑","🖥️","📞"] },
+  { room:"🎨 Sanat Galerisi", bg:"🖼️", title:"Sanat Galerisi", time:40, hints:1,
+    items:[{e:"🖌️",n:"Fırça"},{e:"🎨",n:"Palet"},{e:"🗿",n:"Heykel"},{e:"📷",n:"Fotoğraf Makinesi"},{e:"🧵",n:"İplik"},{e:"🔦",n:"Işık"},{e:"🖼️",n:"Tablo"}],
+    decor:["🎭","🏺","🪆","🕯️","🌟"] },
+  { room:"🚢 Gemi Güvertesi", bg:"🚢", title:"Gemi Güvertesi", time:35, hints:1,
+    items:[{e:"🧭",n:"Pusula"},{e:"⚓",n:"Çıpa"},{e:"🗺️",n:"Harita"},{e:"🔭",n:"Dürbün"},{e:"🪝",n:"Çengel"},{e:"🚨",n:"Alarm"},{e:"🧯",n:"Yangın Söndürücü"}],
+    decor:["🌊","⛵","🐬","🦈","🌅"] },
+  { room:"🚀 Uzay İstasyonu", bg:"🚀", title:"Uzay İstasyonu", time:30, hints:1,
+    items:[{e:"👨‍🚀",n:"Astronot"},{e:"🛸",n:"UFO"},{e:"🌕",n:"Ay"},{e:"⭐",n:"Yıldız"},{e:"🔭",n:"Teleskop"},{e:"🛰️",n:"Uydu"},{e:"🧪",n:"Deney Tüpü"},{e:"💻",n:"Bilgisayar"}],
+    decor:["🌌","🪐","☄️","🌠","🌍"] },
+];
+
+let state = {
+  level: 0, score: 0,
+  completedLevels: [],
+  currentFound: [],
+  timer: null, timeLeft: 0, hintsLeft: 0,
+  levelStartTime: 0, itemPositions: []
+};
+
+// Event listeners (no inline onclick)
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('hintBtn').addEventListener('click', useHint);
+document.getElementById('nextBtn').addEventListener('click', nextLevel);
+document.getElementById('retryBtn').addEventListener('click', retryLevel);
+document.getElementById('skipBtn').addEventListener('click', nextLevel);
+document.getElementById('restartBtn').addEventListener('click', restartGame);
+document.getElementById('sceneWrap').addEventListener('click', handleSceneClick);
+
+buildLevelBadges();
+
+function buildLevelBadges() {
+  const c = document.getElementById('levelBadges');
+  c.innerHTML = '';
+  for(let i=0;i<20;i++) {
+    const d = document.createElement('div');
+    d.className = 'level-badge' + (state.completedLevels.includes(i)?' done':'');
+    d.textContent = i+1;
+    c.appendChild(d);
+  }
+}
+
+function startGame() {
+  let l = 0;
+  for(let i=0;i<20;i++) { if(!state.completedLevels.includes(i)){l=i;break;} }
+  if(state.completedLevels.length===20) l=0;
+  state.level = l;
+  showScreen('game');
+  loadLevel();
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function loadLevel() {
+  const lv = LEVELS[state.level];
+  clearInterval(state.timer);
+  state.currentFound = [];
+  state.hintsLeft = lv.hints;
+  state.timeLeft = lv.time;
+  state.levelStartTime = Date.now();
+
+  document.getElementById('levelLabel').textContent = `Kademe ${state.level+1}`;
+  document.getElementById('roomLabel').textContent = lv.room;
+  document.getElementById('timerVal').textContent = state.timeLeft;
+  document.getElementById('timerBox').classList.remove('urgent');
+  document.getElementById('scoreVal').textContent = state.score;
+  document.getElementById('hintCount').textContent = state.hintsLeft;
+  document.getElementById('hintBtn').disabled = state.hintsLeft <= 0;
+  document.getElementById('progressFill').style.width = '0%';
+
+  const sw = document.getElementById('sceneWrap');
+  document.getElementById('sceneBg').textContent = lv.bg;
+  document.getElementById('sceneTitle').textContent = lv.title;
+
+  sw.querySelectorAll('.hidden-item,.decor-item,.ripple,.hint-glow,.miss-flash').forEach(e=>e.remove());
+
+  lv.decor.forEach(em => placeEmoji(sw, em, 'decor-item'));
+  state.itemPositions = [];
+  lv.items.forEach((item, idx) => {
+    const pos = randomPos();
+    state.itemPositions.push({idx, pos});
+    const el = document.createElement('div');
+    el.className = 'hidden-item';
+    el.textContent = item.e;
+    el.dataset.idx = idx;
+    el.style.left = pos.x + '%';
+    el.style.top = pos.y + '%';
+    el.style.opacity = Math.max(0.3, 1 - (state.level * 0.03));
+    el.style.fontSize = (2 * Math.max(0.7, 1 - (state.level * 0.015))) + 'rem';
+    sw.appendChild(el);
+  });
+
+  buildItemList();
+  startTimer();
+}
+
+function placeEmoji(container, emoji, cls) {
+  const el = document.createElement('div');
+  el.className = cls;
+  el.textContent = emoji;
+  const p = randomPos();
+  el.style.left = p.x + '%';
+  el.style.top = p.y + '%';
+  container.appendChild(el);
+}
+
+function randomPos() {
+  return { x: 5 + Math.random()*85, y: 8 + Math.random()*80 };
+}
+
+function buildItemList() {
+  const lv = LEVELS[state.level];
+  const c = document.getElementById('itemList');
+  c.innerHTML = '';
+  lv.items.forEach((item, idx) => {
+    const d = document.createElement('div');
+    d.className = 'item-card' + (state.currentFound.includes(idx)?' found-card':'');
+    d.id = 'icard'+idx;
+    d.innerHTML = `<span class="item-emoji">${item.e}</span><span class="item-name">${item.n}</span>${state.currentFound.includes(idx)?'<span class="check">✓</span>':''}`;
+    c.appendChild(d);
+  });
+}
+
+function startTimer() {
+  clearInterval(state.timer);
+  state.timer = setInterval(() => {
+    state.timeLeft--;
+    document.getElementById('timerVal').textContent = state.timeLeft;
+    if(state.timeLeft <= 10) document.getElementById('timerBox').classList.add('urgent');
+    if(state.timeLeft <= 0) { clearInterval(state.timer); showFail(); }
+  }, 1000);
+}
+
+function handleSceneClick(e) {
+  if(e.target.classList.contains('hidden-item')) {
+    const idx = parseInt(e.target.dataset.idx);
+    if(!state.currentFound.includes(idx)) foundItem(idx, e.target);
+    return;
+  }
+  const sw = document.getElementById('sceneWrap');
+  const rect = sw.getBoundingClientRect();
+  const rip = document.createElement('div');
+  rip.className = 'ripple';
+  rip.style.left = (e.clientX - rect.left) + 'px';
+  rip.style.top = (e.clientY - rect.top) + 'px';
+  sw.appendChild(rip);
+  setTimeout(()=>rip.remove(), 500);
+
+  if(state.level >= 10) {
+    const flash = document.createElement('div');
+    flash.className = 'miss-flash';
+    sw.appendChild(flash);
+    setTimeout(()=>flash.remove(), 350);
+    const penalty = Math.floor(state.level / 5) + 1;
+    state.timeLeft = Math.max(0, state.timeLeft - penalty);
+    document.getElementById('timerVal').textContent = state.timeLeft;
+    if(state.level >= 15) showToast(`-${penalty}s ⚠️ Yanlış tık!`);
+  }
+}
+
+function foundItem(idx, el) {
+  const lv = LEVELS[state.level];
+  state.currentFound.push(idx);
+  el.classList.add('found');
+  setTimeout(()=>{ if(el.parentNode) el.remove(); }, 500);
+
+  const card = document.getElementById('icard'+idx);
+  if(card) { card.classList.add('found-card'); card.innerHTML += '<span class="check">✓</span>'; }
+
+  const bonus = Math.max(1, Math.floor(state.timeLeft / 5));
+  const points = 10 + bonus + state.level * 2;
+  state.score += points;
+  document.getElementById('scoreVal').textContent = state.score;
+  showToast(`+${points} puan 🌟`);
+
+  const pct = (state.currentFound.length / lv.items.length) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  if(state.currentFound.length === lv.items.length) {
+    clearInterval(state.timer);
+    setTimeout(showWin, 400);
+  }
+}
+
+function useHint() {
+  if(state.hintsLeft <= 0) return;
+  state.hintsLeft--;
+  document.getElementById('hintCount').textContent = state.hintsLeft;
+  if(state.hintsLeft <= 0) document.getElementById('hintBtn').disabled = true;
+
+  const lv = LEVELS[state.level];
+  const unfound = lv.items.map((_,i)=>i).filter(i=>!state.currentFound.includes(i));
+  if(!unfound.length) return;
+  const target = unfound[Math.floor(Math.random()*unfound.length)];
+  const el = document.querySelector(`.hidden-item[data-idx="${target}"]`);
+  if(!el) return;
+  const sw = document.getElementById('sceneWrap');
+  const rect = sw.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  const glow = document.createElement('div');
+  glow.className = 'hint-glow';
+  glow.style.left = (elRect.left - rect.left + elRect.width/2) + 'px';
+  glow.style.top = (elRect.top - rect.top + elRect.height/2) + 'px';
+  sw.appendChild(glow);
+  setTimeout(()=>glow.remove(), 1600);
+  showToast(`💡 ${lv.items[target].n} bu taraflarda!`);
+}
+
+function showWin() {
+  const elapsed = Math.round((Date.now() - state.levelStartTime)/1000);
+  document.getElementById('winEmoji').textContent = state.level >= 19 ? '🏆' : '🎉';
+  document.getElementById('winTitle').textContent = ['Harika!','Mükemmel!','Süper!','Bravo!'][state.level%4];
+  document.getElementById('winMsg').textContent = `Tüm eşyaları ${elapsed} saniyede buldun!`;
+  document.getElementById('winTime').textContent = elapsed+'s';
+  document.getElementById('winScore').textContent = state.score;
+
+  if(!state.completedLevels.includes(state.level)) state.completedLevels.push(state.level);
+  buildLevelBadges();
+
+  if(state.level >= 19) {
+    document.getElementById('totalScore').textContent = state.score;
+    document.getElementById('gameWinOverlay').classList.add('show');
+  } else {
+    document.getElementById('nextBtn').textContent = `Kademe ${state.level+2} →`;
+    document.getElementById('levelWinOverlay').classList.add('show');
+  }
+}
+
+function showFail() {
+  const lv = LEVELS[state.level];
+  const rem = lv.items.length - state.currentFound.length;
+  document.getElementById('failMsg').textContent = `${rem} eşya hâlâ gizliydi!`;
+  document.getElementById('levelFailOverlay').classList.add('show');
+}
+
+function nextLevel() {
+  closeOverlays();
+  state.level = Math.min(19, state.level+1);
+  loadLevel();
+}
+
+function retryLevel() {
+  closeOverlays();
+  loadLevel();
+}
+
+function restartGame() {
+  closeOverlays();
+  state.level = 0; state.score = 0; state.completedLevels = [];
+  buildLevelBadges();
+  showScreen('intro');
+}
+
+function closeOverlays() {
+  document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('show'));
+}
+
+let toastTimeout;
+function showToast(msg) {
+  clearTimeout(toastTimeout);
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  toastTimeout = setTimeout(()=>t.remove(), 1900);
+}
+</script>
+</body>
 </html>
